@@ -1,0 +1,20 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    -webkit-tap-highlight-color: transparent;
+  }
+  
+  body {
+    user-select: none;
+    -webkit-user-select: none;
+  }
+
+  /* Focus visible outlines for senior accessibility */
+  button:focus-visible, input:focus-visible {
+    outline: 3px solid #38bdf8;
+    outline-offset: 2px;
+  }
+}
