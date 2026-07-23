@@ -1,5 +1,5 @@
 import React from 'react';
-import { Mic, Loader2, Keyboard, Sparkles, Volume2 } from 'lucide-react';
+import { Mic, Loader2, Keyboard, Sparkles, Volume2, MessageSquare } from 'lucide-react';
 
 export default function VoiceMicButton({
   isListening,
@@ -21,6 +21,25 @@ export default function VoiceMicButton({
         <p className="text-slate-400 text-base sm:text-lg mt-1 font-medium">
           点击下方按键，清晰读出您的测量数据
         </p>
+      </div>
+
+      {/* Prominent Standard Speech Reference Box */}
+      <div className="bg-slate-950/90 border border-slate-800 rounded-2xl p-4 my-3 text-left space-y-2 shadow-inner">
+        <div className="text-xs font-bold text-amber-400 uppercase tracking-wider flex items-center gap-1.5">
+          <MessageSquare className="w-4 h-4 text-amber-400" />
+          <span>🗣️ 口述示范参考 (按照屏幕数字顺序说明)：</span>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm sm:text-base font-bold">
+          <div className="bg-slate-900/90 border border-slate-800 p-2.5 rounded-xl text-emerald-300">
+            “高压 135，低压 85，心率 72”
+          </div>
+          <div className="bg-slate-900/90 border border-slate-800 p-2.5 rounded-xl text-sky-300">
+            “高压一百二十，低压八十，心率七十五”
+          </div>
+        </div>
+        <div className="text-xs text-slate-400 font-medium">
+          💡 提示：按照血压计屏幕上、中、下直接读出数字即可（例如包含服药说明也可直接说出来）。
+        </div>
       </div>
 
       {/* Prominent Live Chinese Speech Preview Box (Unobscured) */}
