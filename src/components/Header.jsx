@@ -1,5 +1,5 @@
 import React from 'react';
-import { Settings, Cloud, CloudOff, RefreshCw, Heart } from 'lucide-react';
+import { Settings, Cloud, CloudOff, RefreshCw } from 'lucide-react';
 
 export default function Header({ syncStatus, onOpenSettings, onManualSync }) {
   const currentDateStr = new Date().toLocaleDateString('zh-CN', {
@@ -13,11 +13,13 @@ export default function Header({ syncStatus, onOpenSettings, onManualSync }) {
     <header className="bg-slate-900/90 backdrop-blur-md border-b border-slate-800 sticky top-0 z-30 px-4 py-3 sm:px-6">
       <div className="max-w-3xl mx-auto flex items-center justify-between">
         
-        {/* App Title & Date */}
+        {/* App Title & Custom Brand Logo */}
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-rose-600 to-rose-400 flex items-center justify-center shadow-lg shadow-rose-950/50">
-            <Heart className="w-6 h-6 text-white fill-white animate-pulse" />
-          </div>
+          <img
+            src="/icon-192.png"
+            alt="长辈健康记录 Logo"
+            className="w-10 h-10 rounded-2xl object-cover shadow-lg shadow-sky-950/50 border border-slate-700"
+          />
           <div>
             <h1 className="text-xl sm:text-2xl font-black text-white tracking-wide flex items-center gap-2">
               长辈健康记录
@@ -29,7 +31,6 @@ export default function Header({ syncStatus, onOpenSettings, onManualSync }) {
         {/* Sync Status Badge & Settings Button */}
         <div className="flex items-center gap-2 sm:gap-3">
           
-          {/* Sync status */}
           <button
             onClick={onManualSync}
             title="点击手动同步至 Google Sheet"
@@ -61,7 +62,6 @@ export default function Header({ syncStatus, onOpenSettings, onManualSync }) {
             )}
           </button>
 
-          {/* Settings Button (Extra Large for Senior touch) */}
           <button
             onClick={onOpenSettings}
             aria-label="设置"
