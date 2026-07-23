@@ -1,17 +1,67 @@
 /**
- * Google Sheets API v4 Integration using Google Identity Services (GIS)
+ * Google Sheets Integration:
+ * Supports BOTH:
+ * 1. No-Login Webhook Sync (Google Apps Script Web App URL) - BEST FOR ELDERLY PARENTS!
+ * 2. Direct OAuth 2.0 GIS Client (Google Identity Services)
  */
 
-const GOOGLE_DISCOVERY_DOC = 'https://sheets.googleapis.com/$discovery/rest?version=v4';
 const SCOPES = 'https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/drive.file';
 
 let tokenClient = null;
 let gapiInited = false;
 let gsisInited = false;
 
+// -------------------------------------------------------------
+// 1. NO-LOGIN WEBHOOK SYNC (Google Apps Script)
+// -------------------------------------------------------------
+export async function sendRecordViaWebhook(record, webhookUrl) {
+  const targetUrl = (webhookUrl || localStorage.getItem('gdrive_webhook_url') || '').trim();
+  if (!targetUrl) {
+    throw new Error('未配置 Google Apps Script Webhook URL');
+  }
+
+  const sys = Number(record.systolic);
+  const dia = Number(record.diastolic);
+  let categoryText = '正常';
+  if (sys >= 140 || dia >= 90) categoryText = '2级高血压(严重)';
+  else if (sys >= 130 || dia >= 80) categoryText = '1级高血压(偏高)';
+  else if (sys >= 120) categoryText = '正常高值';
+
+  const formattedDate = new Date(record.timestamp).toLocaleString('zh-CN', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false
+  });
+
+  const payload = {
+    timestamp: formattedDate,
+    systolic: record.systolic,
+    diastolic: record.diastolic,
+    heart_rate: record.heart_rate,
+    category: categoryText,
+    notes: record.notes || ''
+  };
+
+  // Use no-cors or standard fetch for Apps Script redirect
+  const response = await fetch(targetUrl, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'text/plain;charset=utf-8',
+    },
+    body: JSON.stringify(payload)
+  });
+
+  return response;
+}
+
+// -------------------------------------------------------------
+// 2. OAUTH 2.0 GIS CLIENT
+// -------------------------------------------------------------
 export function loadGoogleScripts() {
   return new Promise((resolve, reject) => {
-    // Load GIS script
     if (!document.getElementById('google-gis-script')) {
       const scriptGis = document.createElement('script');
       scriptGis.id = 'google-gis-script';
@@ -28,7 +78,6 @@ export function loadGoogleScripts() {
       gsisInited = true;
     }
 
-    // Load GAPI script
     if (!document.getElementById('google-gapi-script')) {
       const scriptGapi = document.createElement('script');
       scriptGapi.id = 'google-gapi-script';
@@ -52,7 +101,6 @@ export function loadGoogleScripts() {
 
 export function initGoogleOAuthClient(clientId, onTokenReceived, onError) {
   if (!window.google || !window.google.accounts || !window.google.accounts.oauth2) {
-    console.warn('Google Identity Services script not yet loaded');
     return null;
   }
 
@@ -77,14 +125,13 @@ export function requestGoogleAccessToken() {
   if (tokenClient) {
     tokenClient.requestAccessToken({ prompt: 'consent' });
   } else {
-    throw new Error('Google OAuth 客户端未初始化，请在设置中配置 Client ID');
+    throw new Error('Google OAuth 客户端未初始化');
   }
 }
 
 export function getStoredAccessToken() {
   const token = localStorage.getItem('gdrive_access_token');
   const expiresAt = Number(localStorage.getItem('gdrive_token_expires_at') || 0);
-
   if (token && Date.now() < expiresAt - 60000) {
     return token;
   }
@@ -99,34 +146,23 @@ export async function createHealthSpreadsheet(accessToken) {
       'Content-Type': 'application/json'
     },
     body: JSON.stringify({
-      properties: {
-        title: '长辈健康血压心率日志 (Family Vital Logger)'
-      },
-      sheets: [
-        {
-          properties: {
-            title: '血压心率记录'
-          },
-          data: [
-            {
-              startRow: 0,
-              startColumn: 0,
-              rowData: [
-                {
-                  values: [
-                    { userEnteredValue: { stringValue: '测量时间' } },
-                    { userEnteredValue: { stringValue: '收缩压/高压 (mmHg)' } },
-                    { userEnteredValue: { stringValue: '舒张压/低压 (mmHg)' } },
-                    { userEnteredValue: { stringValue: '心率/脉搏 (bpm)' } },
-                    { userEnteredValue: { stringValue: '血压状态' } },
-                    { userEnteredValue: { stringValue: '备注/服药' } }
-                  ]
-                }
-              ]
-            }
-          ]
-        }
-      ]
+      properties: { title: '长辈健康血压心率日志 (Family Vital Logger)' },
+      sheets: [{
+        properties: { title: '血压心率记录' },
+        data: [{
+          startRow: 0, startColumn: 0,
+          rowData: [{
+            values: [
+              { userEnteredValue: { stringValue: '测量时间' } },
+              { userEnteredValue: { stringValue: '收缩压/高压 (mmHg)' } },
+              { userEnteredValue: { stringValue: '舒张压/低压 (mmHg)' } },
+              { userEnteredValue: { stringValue: '心率/脉搏 (bpm)' } },
+              { userEnteredValue: { stringValue: '血压状态' } },
+              { userEnteredValue: { stringValue: '备注/服药' } }
+            ]
+          }]
+        }]
+      }]
     })
   });
 
@@ -146,16 +182,9 @@ export async function appendRecordToSheet(spreadsheetId, record, accessToken) {
   }
 
   const formattedDate = new Date(record.timestamp).toLocaleString('zh-CN', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-    hour12: false
+    year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false
   });
 
-  // Calculate BP category text
   const sys = Number(record.systolic);
   const dia = Number(record.diastolic);
   let categoryText = '正常';
@@ -163,17 +192,7 @@ export async function appendRecordToSheet(spreadsheetId, record, accessToken) {
   else if (sys >= 130 || dia >= 80) categoryText = '1级高血压(偏高)';
   else if (sys >= 120) categoryText = '正常高值';
 
-  const values = [
-    [
-      formattedDate,
-      record.systolic,
-      record.diastolic,
-      record.heart_rate,
-      categoryText,
-      record.notes || ''
-    ]
-  ];
-
+  const values = [[formattedDate, record.systolic, record.diastolic, record.heart_rate, categoryText, record.notes || '']];
   const url = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/血压心率记录!A:F:append?valueInputOption=USER_ENTERED`;
 
   const response = await fetch(url, {
@@ -182,9 +201,7 @@ export async function appendRecordToSheet(spreadsheetId, record, accessToken) {
       'Authorization': `Bearer ${token}`,
       'Content-Type': 'application/json'
     },
-    body: JSON.stringify({
-      values
-    })
+    body: JSON.stringify({ values })
   });
 
   if (!response.ok) {

@@ -11,7 +11,7 @@ import SettingsModal from './components/SettingsModal';
 import { saveRecord, getAllRecords, deleteRecord, markAsSynced } from './lib/db';
 import { parseSpeechTranscript, localExtractVitals } from './lib/gemini';
 import { isSpeechSupported, createSpeechRecognizer } from './lib/speechRecognition';
-import { loadGoogleScripts, initGoogleOAuthClient, appendRecordToSheet, getStoredAccessToken } from './lib/googleSheets';
+import { loadGoogleScripts, initGoogleOAuthClient, appendRecordToSheet, sendRecordViaWebhook, getStoredAccessToken } from './lib/googleSheets';
 
 export default function App() {
   const [records, setRecords] = useState([]);
@@ -69,10 +69,11 @@ export default function App() {
   };
 
   const syncPendingRecords = async () => {
+    const webhookUrl = localStorage.getItem('gdrive_webhook_url');
     const sheetId = localStorage.getItem('gdrive_sheet_id');
     const token = getStoredAccessToken();
 
-    if (!sheetId || !token) {
+    if (!webhookUrl && (!sheetId || !token)) {
       setSyncStatus('offline');
       return;
     }
@@ -83,8 +84,13 @@ export default function App() {
       const pending = all.filter(r => !r.synced);
 
       for (const rec of pending) {
-        await appendRecordToSheet(sheetId, rec, token);
-        await markAsSynced(rec.id);
+        if (webhookUrl) {
+          await sendRecordViaWebhook(rec, webhookUrl);
+          await markAsSynced(rec.id);
+        } else if (sheetId && token) {
+          await appendRecordToSheet(sheetId, rec, token);
+          await markAsSynced(rec.id);
+        }
       }
 
       await loadRecords();
@@ -162,7 +168,6 @@ export default function App() {
       setParsedResult(result);
     } catch (err) {
       console.warn('AI Parsing fallback triggered:', err);
-      // Fallback local extract so confirmation modal ALWAYS pops up
       const fallback = localExtractVitals(textToParse);
       setParsedResult(fallback);
     } finally {
@@ -177,14 +182,20 @@ export default function App() {
       setTranscript('');
       latestTranscriptRef.current = '';
 
+      const webhookUrl = localStorage.getItem('gdrive_webhook_url');
       const sheetId = localStorage.getItem('gdrive_sheet_id');
       const token = getStoredAccessToken();
 
-      if (sheetId && token) {
+      if (webhookUrl || (sheetId && token)) {
         setSyncStatus('syncing');
         try {
-          await appendRecordToSheet(sheetId, saved, token);
-          await markAsSynced(saved.id);
+          if (webhookUrl) {
+            await sendRecordViaWebhook(saved, webhookUrl);
+            await markAsSynced(saved.id);
+          } else {
+            await appendRecordToSheet(sheetId, saved, token);
+            await markAsSynced(saved.id);
+          }
           setSyncStatus('synced');
         } catch (syncErr) {
           console.warn('Immediate sync error, stored offline:', syncErr);
@@ -238,7 +249,6 @@ export default function App() {
 
       <main className="flex-1 max-w-3xl w-full mx-auto px-4 py-6">
         
-        {/* Machine Guide Banner Button */}
         <div className="mb-2 text-right">
           <button
             onClick={() => setShowGuideModal(true)}
@@ -271,7 +281,7 @@ export default function App() {
 
       <footer className="text-center py-6 text-slate-500 text-sm border-t border-slate-900 bg-slate-950">
         <p>❤️ 专为长辈设计的关爱健康记录仪 (Voice PWA)</p>
-        <p className="text-xs text-slate-600 mt-1">支持离线存储与 Google Drive 云端安全备份</p>
+        <p className="text-xs text-slate-600 mt-1">支持无登录自动同步 Google Sheet & 离线保护</p>
       </footer>
 
       <ParseConfirmModal
