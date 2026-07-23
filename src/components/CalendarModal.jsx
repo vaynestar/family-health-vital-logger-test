@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { getBPCategory } from '../lib/bpCategory';
-import { X, Calendar as CalendarIcon, ChevronLeft, ChevronRight, Activity, Heart, AlertCircle } from 'lucide-react';
+import { X, Calendar as CalendarIcon, ChevronLeft, ChevronRight, Activity, Heart } from 'lucide-react';
 
-export default function CalendarModal({ isOpen, onClose, records }) {
+export default function CalendarModal({ isOpen, onClose, records = [] }) {
   if (!isOpen) return null;
 
   const today = new Date();
@@ -20,12 +20,16 @@ export default function CalendarModal({ isOpen, onClose, records }) {
 
   // Group records by YYYY-MM-DD
   const recordsByDate = {};
-  records.forEach(r => {
-    const d = new Date(r.timestamp);
-    const key = formatDateKey(d);
-    if (!recordsByDate[key]) recordsByDate[key] = [];
-    recordsByDate[key].push(r);
-  });
+  if (Array.isArray(records)) {
+    records.forEach(r => {
+      if (r && r.timestamp) {
+        const d = new Date(r.timestamp);
+        const key = formatDateKey(d);
+        if (!recordsByDate[key]) recordsByDate[key] = [];
+        recordsByDate[key].push(r);
+      }
+    });
+  }
 
   // Month navigation
   const prevMonth = () => {
@@ -64,9 +68,9 @@ export default function CalendarModal({ isOpen, onClose, records }) {
   let hrAvg = 0, hrMin = 0, hrMax = 0;
 
   if (dayRecords.length > 0) {
-    const sysList = dayRecords.map(r => r.systolic);
-    const diaList = dayRecords.map(r => r.diastolic);
-    const hrList = dayRecords.map(r => r.heart_rate);
+    const sysList = dayRecords.map(r => Number(r.systolic) || 0);
+    const diaList = dayRecords.map(r => Number(r.diastolic) || 0);
+    const hrList = dayRecords.map(r => Number(r.heart_rate) || 0);
 
     sysAvg = Math.round(sysList.reduce((a, b) => a + b, 0) / sysList.length);
     sysMin = Math.min(...sysList);
@@ -95,7 +99,8 @@ export default function CalendarModal({ isOpen, onClose, records }) {
           </h3>
           <button
             onClick={onClose}
-            className="w-10 h-10 rounded-full bg-slate-800 text-slate-400 hover:text-white flex items-center justify-center"
+            aria-label="关闭日历"
+            className="w-10 h-10 rounded-full bg-slate-800 text-slate-400 hover:text-white flex items-center justify-center active:scale-95"
           >
             <X className="w-6 h-6" />
           </button>
@@ -142,11 +147,10 @@ export default function CalendarModal({ isOpen, onClose, records }) {
               const hasRecords = recordsByDate[dateKey] && recordsByDate[dateKey].length > 0;
               const isSelected = selectedDateStr === dateKey;
 
-              // Color badge for day status
               let dayBadgeColor = 'bg-slate-800';
               if (hasRecords) {
-                const daySysList = recordsByDate[dateKey].map(r => r.systolic);
-                const dayDiaList = recordsByDate[dateKey].map(r => r.diastolic);
+                const daySysList = recordsByDate[dateKey].map(r => Number(r.systolic) || 0);
+                const dayDiaList = recordsByDate[dateKey].map(r => Number(r.diastolic) || 0);
                 const maxSys = Math.max(...daySysList);
                 const maxDia = Math.max(...dayDiaList);
                 const cat = getBPCategory(maxSys, maxDia);
@@ -155,7 +159,7 @@ export default function CalendarModal({ isOpen, onClose, records }) {
 
               return (
                 <button
-                  key={dayKey}
+                  key={dateKey}
                   onClick={() => setSelectedDateStr(dateKey)}
                   className={`h-10 sm:h-12 rounded-xl flex flex-col items-center justify-center relative transition-all active:scale-95 border ${
                     isSelected
@@ -260,7 +264,7 @@ export default function CalendarModal({ isOpen, onClose, records }) {
         <div className="mt-5">
           <button
             onClick={onClose}
-            className="w-full py-3 rounded-2xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-base border border-slate-700"
+            className="w-full py-3 rounded-2xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-base border border-slate-700 active:scale-95"
           >
             返回主页
           </button>
