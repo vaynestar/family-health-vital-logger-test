@@ -48,7 +48,7 @@ export default function SettingsModal({ isOpen, onClose, onSaveSettings }) {
   const appsScriptCode = `function doPost(e) {
   var sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
   if (sheet.getLastRow() == 0) {
-    sheet.appendRow(["测量时间", "收缩压/高压 (mmHg)", "舒张压/低压 (mmHg)", "心率/脉搏 (bpm)", "血压状态", "备注"]);
+    sheet.appendRow(["测量时间 Date & Time", "收缩压/高压 Systolic (mmHg)", "舒张压/低压 Diastolic (mmHg)", "心率/脉搏 Heart Rate (BPM)", "血压状态 BP Status", "备注说明 Notes"]);
   }
   var data = JSON.parse(e.postData.contents);
   sheet.appendRow([data.timestamp, data.systolic, data.diastolic, data.heart_rate, data.category, data.notes]);
@@ -108,7 +108,7 @@ export default function SettingsModal({ isOpen, onClose, onSaveSettings }) {
 
         <form onSubmit={handleSave} className="mt-4 space-y-5">
           
-          {/* Section 1: NO-LOGIN Google Sheet Webhook Sync (RECOMMENDED FOR PARENTS) */}
+          {/* Section 1: NO-LOGIN Google Sheet Webhook Sync */}
           <div className="bg-slate-950 border-2 border-emerald-500/80 rounded-2xl p-4 space-y-3 shadow-lg">
             <div className="flex items-center justify-between">
               <h4 className="text-lg font-black text-emerald-400 flex items-center gap-2">
@@ -120,7 +120,7 @@ export default function SettingsModal({ isOpen, onClose, onSaveSettings }) {
             </div>
 
             <p className="text-xs text-slate-300 leading-relaxed">
-              在您的 Google Sheet 中添加 1 行 Apps Script 代码，复制生成的 Webhook 链接填入下方。<strong>父母使用手机时无需登录任何 Gmail 账号</strong>，记录将自动静默写入您的 Google 表格中！
+              在您的 Google Sheet 中添加 1 行 Apps Script 代码，复制生成的 Webhook 链接填入下方。<strong>父母使用手机时无需登录任何 Gmail 账号</strong>，记录将自动静默写入您的中英双语 Google 表格中！
             </p>
 
             <div>

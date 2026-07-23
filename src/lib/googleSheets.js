@@ -22,10 +22,10 @@ export async function sendRecordViaWebhook(record, webhookUrl) {
 
   const sys = Number(record.systolic);
   const dia = Number(record.diastolic);
-  let categoryText = '正常';
-  if (sys >= 140 || dia >= 90) categoryText = '2级高血压(严重)';
-  else if (sys >= 130 || dia >= 80) categoryText = '1级高血压(偏高)';
-  else if (sys >= 120) categoryText = '正常高值';
+  let categoryText = '正常 Normal';
+  if (sys >= 140 || dia >= 90) categoryText = '2级高血压 Stage 2 High';
+  else if (sys >= 130 || dia >= 80) categoryText = '1级高血压 Stage 1 High';
+  else if (sys >= 120) categoryText = '正常高值 Elevated';
 
   const formattedDate = new Date(record.timestamp).toLocaleString('zh-CN', {
     year: 'numeric',
@@ -45,7 +45,6 @@ export async function sendRecordViaWebhook(record, webhookUrl) {
     notes: record.notes || ''
   };
 
-  // mode: 'no-cors' prevents browser CORS block on Google Apps Script redirects
   await fetch(targetUrl, {
     method: 'POST',
     mode: 'no-cors',
@@ -147,19 +146,19 @@ export async function createHealthSpreadsheet(accessToken) {
       'Content-Type': 'application/json'
     },
     body: JSON.stringify({
-      properties: { title: '长辈健康血压心率日志 (Family Vital Logger)' },
+      properties: { title: '长辈健康血压心率日志 | Family Health Vital Logger' },
       sheets: [{
-        properties: { title: '血压心率记录' },
+        properties: { title: '血压心率记录 | Vitals' },
         data: [{
           startRow: 0, startColumn: 0,
           rowData: [{
             values: [
-              { userEnteredValue: { stringValue: '测量时间' } },
-              { userEnteredValue: { stringValue: '收缩压/高压 (mmHg)' } },
-              { userEnteredValue: { stringValue: '舒张压/低压 (mmHg)' } },
-              { userEnteredValue: { stringValue: '心率/脉搏 (bpm)' } },
-              { userEnteredValue: { stringValue: '血压状态' } },
-              { userEnteredValue: { stringValue: '备注/服药' } }
+              { userEnteredValue: { stringValue: '测量时间 Date & Time' } },
+              { userEnteredValue: { stringValue: '收缩压/高压 Systolic (mmHg)' } },
+              { userEnteredValue: { stringValue: '舒张压/低压 Diastolic (mmHg)' } },
+              { userEnteredValue: { stringValue: '心率/脉搏 Heart Rate (BPM)' } },
+              { userEnteredValue: { stringValue: '血压状态 BP Status' } },
+              { userEnteredValue: { stringValue: '备注说明 Notes' } }
             ]
           }]
         }]
@@ -188,13 +187,13 @@ export async function appendRecordToSheet(spreadsheetId, record, accessToken) {
 
   const sys = Number(record.systolic);
   const dia = Number(record.diastolic);
-  let categoryText = '正常';
-  if (sys >= 140 || dia >= 90) categoryText = '2级高血压(严重)';
-  else if (sys >= 130 || dia >= 80) categoryText = '1级高血压(偏高)';
-  else if (sys >= 120) categoryText = '正常高值';
+  let categoryText = '正常 Normal';
+  if (sys >= 140 || dia >= 90) categoryText = '2级高血压 Stage 2 High';
+  else if (sys >= 130 || dia >= 80) categoryText = '1级高血压 Stage 1 High';
+  else if (sys >= 120) categoryText = '正常高值 Elevated';
 
   const values = [[formattedDate, record.systolic, record.diastolic, record.heart_rate, categoryText, record.notes || '']];
-  const url = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/血压心率记录!A:F:append?valueInputOption=USER_ENTERED`;
+  const url = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/'血压心率记录 | Vitals'!A:F:append?valueInputOption=USER_ENTERED`;
 
   const response = await fetch(url, {
     method: 'POST',
