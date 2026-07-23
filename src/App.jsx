@@ -1,18 +1,18 @@
 import React, { useState, useEffect, useRef } from 'react';
-import Header from './components/Header';
-import HeroReadingCard from './components/HeroReadingCard';
-import VoiceMicButton from './components/VoiceMicButton';
-import ParseConfirmModal from './components/ParseConfirmModal';
-import ManualEntryModal from './components/ManualEntryModal';
-import MachineGuideModal from './components/MachineGuideModal';
-import CalendarModal from './components/CalendarModal';
-import HistoryList from './components/HistoryList';
-import SettingsModal from './components/SettingsModal';
+import Header from './components/Header.jsx';
+import HeroReadingCard from './components/HeroReadingCard.jsx';
+import VoiceMicButton from './components/VoiceMicButton.jsx';
+import ParseConfirmModal from './components/ParseConfirmModal.jsx';
+import ManualEntryModal from './components/ManualEntryModal.jsx';
+import MachineGuideModal from './components/MachineGuideModal.jsx';
+import CalendarModal from './components/CalendarModal.jsx';
+import HistoryList from './components/HistoryList.jsx';
+import SettingsModal from './components/SettingsModal.jsx';
 
-import { saveRecord, getAllRecords, deleteRecord, markAsSynced } from './lib/db';
-import { parseSpeechTranscript, localExtractVitals } from './lib/gemini';
-import { isSpeechSupported, createSpeechRecognizer } from './lib/speechRecognition';
-import { loadGoogleScripts, initGoogleOAuthClient, appendRecordToSheet, sendRecordViaWebhook, getStoredAccessToken } from './lib/googleSheets';
+import { saveRecord, getAllRecords, deleteRecord, markAsSynced } from './lib/db.js';
+import { parseSpeechTranscript, localExtractVitals } from './lib/gemini.js';
+import { isSpeechSupported, createSpeechRecognizer } from './lib/speechRecognition.js';
+import { loadGoogleScripts, initGoogleOAuthClient, appendRecordToSheet, sendRecordViaWebhook, getStoredAccessToken } from './lib/googleSheets.js';
 
 export default function App() {
   const [records, setRecords] = useState([]);
