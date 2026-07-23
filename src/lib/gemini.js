@@ -44,8 +44,14 @@ export function convertChineseNumbers(str) {
 }
 
 /**
- * Robust Regex Fallback Parser for Chinese Vital Speech
- * Cleanly strips out numbers and vital keywords so 'notes' only contains genuine remarks (e.g. "服药", "头晕").
+ * Robust Local Fallback Parser
+ * STRICT POSITION RULE:
+ * In standard blood pressure readings (and machine screen top/middle/bottom order):
+ * 1st number = Systolic / 高压 (SYS)
+ * 2nd number = Diastolic / 低压 (DIA)
+ * 3rd number = Heart Rate / 心率 (PULSE)
+ * 
+ * Never swap Diastolic (2nd) and Heart Rate (3rd)!
  */
 export function localExtractVitals(rawText) {
   if (!rawText) return null;
@@ -57,27 +63,34 @@ export function localExtractVitals(rawText) {
   let dia = null;
   let pulse = null;
 
-  const sysMatch = text.match(/(?:高压|收缩压|高的|第一项|上面)[^\d]*(\d{2,3})/);
-  const diaMatch = text.match(/(?:低压|舒张压|低的|第二项|中间)[^\d]*(\d{2,3})/);
-  const pulseMatch = text.match(/(?:脉搏|心率|心跳|第三项|下面|最后一项)[^\d]*(\d{2,3})/);
-
-  if (sysMatch) sys = parseInt(sysMatch[1], 10);
-  if (diaMatch) dia = parseInt(diaMatch[1], 10);
-  if (pulseMatch) pulse = parseInt(pulseMatch[1], 10);
-
-  if (numbers && numbers.length >= 2) {
+  // 1. If 3 numbers are spoken sequentially (e.g. "135 85 72" or "高压135 低压85 心率72")
+  // Positional order ALWAYS takes precedence to prevent swapping DIA and PULSE!
+  if (numbers && numbers.length >= 3) {
     const nums = numbers.map(n => parseInt(n, 10));
-    const sysCandidate = nums.find(n => n >= 90 && n <= 230);
-    const diaCandidate = nums.find(n => n >= 40 && n < 130 && n !== sysCandidate);
-    const pulseCandidate = nums.find(n => n >= 40 && n <= 180 && n !== sysCandidate && n !== diaCandidate);
+    sys = nums[0];
+    dia = nums[1];
+    pulse = nums[2];
+  } else if (numbers && numbers.length === 2) {
+    const nums = numbers.map(n => parseInt(n, 10));
+    sys = nums[0];
+    dia = nums[1];
+    pulse = 75; // Default resting pulse if omitted
+  } else {
+    // Keyword fallback for single or partial matches
+    const sysMatch = text.match(/(?:高压|收缩压|高的|第一项|上面)[^\d]*(\d{2,3})/);
+    const diaMatch = text.match(/(?:低压|舒张压|低的|第二项|中间)[^\d]*(\d{2,3})/);
+    const pulseMatch = text.match(/(?:脉搏|心率|心跳|第三项|下面|最后一项)[^\d]*(\d{2,3})/);
 
-    if (!sys && sysCandidate) sys = sysCandidate;
-    if (!dia && diaCandidate) dia = diaCandidate;
-    if (!pulse && pulseCandidate) pulse = pulseCandidate;
+    if (sysMatch) sys = parseInt(sysMatch[1], 10);
+    if (diaMatch) dia = parseInt(diaMatch[1], 10);
+    if (pulseMatch) pulse = parseInt(pulseMatch[1], 10);
 
-    if (!sys) sys = nums[0];
-    if (!dia && nums[1]) dia = nums[1];
-    if (!pulse && nums[2]) pulse = nums[2];
+    if (numbers && numbers.length > 0) {
+      const nums = numbers.map(n => parseInt(n, 10));
+      if (!sys) sys = nums[0];
+      if (!dia && nums[1]) dia = nums[1];
+      if (!pulse && nums[2]) pulse = nums[2];
+    }
   }
 
   // Extract clean remark text (remove numbers and vital keywords)
@@ -86,7 +99,6 @@ export function localExtractVitals(rawText) {
     .replace(/[，。！？\s,.]+/g, ' ')
     .trim();
 
-  // If cleanNote is just empty or leftover punctuation, clear it
   if (cleanNote.length <= 1) {
     cleanNote = '';
   }
@@ -136,13 +148,12 @@ export async function parseSpeechTranscript(transcript, customApiKey = '') {
     try {
       const ai = new GoogleGenAI({ apiKey });
       const systemInstruction = `你是一个为长辈解析中文血压与心率口述语音的 AI 助手。
-从口述文本中提取：
-1. systolic: 收缩压/高压 (mmHg 整数)
-2. diastolic: 舒张压/低压 (mmHg 整数)
-3. heart_rate: 心率/脉搏 (bpm 整数)
-4. notes: 真正的额外备注 (例如："早上服药"、"感觉头晕"；如果用户只说了数值，notes 必须为空字符串 "")
+根据血压计屏幕（上、中、下）固定顺序：
+第1个数字 = systolic (高压 / 收缩压)
+第2个数字 = diastolic (低压 / 舒张压)
+第3个数字 = heart_rate (心率 / 脉搏)
 
-注意：切勿在 notes 中重复高压、低压、心率数值！如果用户没说额外情况，notes 保持为空字符串 ""。
+严格规则：第二个数字是低压(diastolic)，第三个数字是心率(heart_rate)！绝对不能颠倒低压和心率！
 只返回结构化 JSON。`;
 
       const response = await ai.models.generateContent({

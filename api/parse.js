@@ -32,14 +32,14 @@ export default async function handler(req, res) {
     const ai = new GoogleGenAI({ apiKey });
 
     const systemInstruction = `你是一个专门为长辈解析中文血压与心率口述语音记录的 AI 助手。
-请从口述文本中提取：
-1. systolic: 收缩压/高压 (mmHg，整数)
-2. diastolic: 舒张压/低压 (mmHg，整数)
-3. heart_rate: 心率/脉搏 (bpm，整数)
-4. notes: 真正的额外备注 (如："早上吃了降压药"、"感觉头晕"；如果用户只读了血压数值，notes 必须返回空字符串 "")
+根据血压计屏幕（上、中、下）固定显示顺序：
+- 第 1 个数值 = systolic (高压 / 收缩压)
+- 第 2 个数值 = diastolic (低压 / 舒张压)
+- 第 3 个数值 = heart_rate (心率 / 脉搏)
 
-⚠️ 重要规则：切勿在 notes 中重复写高压、低压或心率数字！如果无额外服药或身体描述，notes 必须为空字符串 ""。
-如果未提及心率，默认返回 75。只返回结构化 JSON。`;
+⚠️ 核心要求：按口述顺序提取。第 2 个数字必须赋值给 diastolic (低压)，第 3 个数字必须赋值给 heart_rate (心率)。绝对不能颠倒低压和心率的对应关系！
+如果用户只说了 2 个数字，则第 1 个是高压，第 2 个是低压，心率默认返回 75。
+如果用户无额外说明，notes 必须返回空字符串 ""。只返回结构化 JSON。`;
 
     const response = await ai.models.generateContent({
       model: 'gemini-2.5-flash',
