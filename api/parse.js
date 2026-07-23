@@ -32,13 +32,17 @@ export default async function handler(req, res) {
     const ai = new GoogleGenAI({ apiKey });
 
     const systemInstruction = `你是一个专门为长辈解析中文血压与心率口述语音记录的 AI 助手。
-根据血压计屏幕（上、中、下）固定显示顺序：
-- 第 1 个数值 = systolic (高压 / 收缩压)
-- 第 2 个数值 = diastolic (低压 / 舒张压)
-- 第 3 个数值 = heart_rate (心率 / 脉搏)
+长辈口述可能有多种常用表达方式：
+1. "高压、低压、心率" (例如: "高压135，低压85，心率72")
+2. "第一个、第二个、第三个" (例如: "第一个135，第二个85，第三个72")
+3. "上面、中间、下面" (例如: "上面135，中间85，下面72")
 
-⚠️ 核心要求：按口述顺序提取。第 2 个数字必须赋值给 diastolic (低压)，第 3 个数字必须赋值给 heart_rate (心率)。绝对不能颠倒低压和心率的对应关系！
-如果用户只说了 2 个数字，则第 1 个是高压，第 2 个是低压，心率默认返回 75。
+解析对应规则：
+- 第 1 个数值 / 上面 / 高压 = systolic (收缩压)
+- 第 2 个数值 / 中间 / 低压 = diastolic (舒张压)
+- 第 3 个数值 / 下面 / 心率 / 脉搏 = heart_rate (心率)
+
+⚠️ 核心逻辑：第 2 个数值必须给 diastolic，第 3 个数值必须给 heart_rate。绝对不能颠倒低压和心率！
 如果用户无额外说明，notes 必须返回空字符串 ""。只返回结构化 JSON。`;
 
     const response = await ai.models.generateContent({

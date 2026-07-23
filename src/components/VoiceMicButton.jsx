@@ -19,7 +19,7 @@ export default function VoiceMicButton({
           语音快速记录
         </h2>
         <p className="text-slate-400 text-xs sm:text-sm mt-0.5 font-medium">
-          按顺序说出血压计数值（高压、低压、心率）
+          可按任意口述方式说明高压、低压与心率
         </p>
       </div>
 
@@ -27,14 +27,20 @@ export default function VoiceMicButton({
       <div className="bg-slate-950/90 border border-slate-800 rounded-2xl p-3 my-2 text-left space-y-1.5 shadow-inner">
         <div className="text-[11px] font-bold text-amber-400 uppercase tracking-wider flex items-center gap-1">
           <MessageSquare className="w-3.5 h-3.5 text-amber-400" />
-          <span>🗣️ 口述示范：</span>
+          <span>🗣️ 口述示范（支持多种常用说法）：</span>
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 text-xs sm:text-sm font-bold">
-          <div className="bg-slate-900/90 border border-slate-800 px-2.5 py-1.5 rounded-xl text-emerald-300">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 text-xs font-bold">
+          <div className="bg-slate-900/90 border border-slate-800 px-2 py-1.5 rounded-xl text-emerald-300">
+            “上面 135，中间 85，下面 72”
+          </div>
+          <div className="bg-slate-900/90 border border-slate-800 px-2 py-1.5 rounded-xl text-sky-300">
+            “第一个 135，第二个 85，第三个 72”
+          </div>
+          <div className="bg-slate-900/90 border border-slate-800 px-2 py-1.5 rounded-xl text-amber-300">
             “高压 135，低压 85，心率 72”
           </div>
-          <div className="bg-slate-900/90 border border-slate-800 px-2.5 py-1.5 rounded-xl text-sky-300">
-            “高压一百二十，低压八十，心率七十五”
+          <div className="bg-slate-900/90 border border-slate-800 px-2 py-1.5 rounded-xl text-teal-300">
+            “高压一百三，低压八十五，心率七十二”
           </div>
         </div>
       </div>
