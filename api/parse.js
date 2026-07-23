@@ -1,7 +1,6 @@
 import { GoogleGenAI, Type } from '@google/genai';
 
 export default async function handler(req, res) {
-  // CORS setup
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
@@ -21,12 +20,12 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Transcript string is required' });
     }
 
-    // Use environment variable GEMINI_API_KEY on Vercel, or client-provided key
-    const apiKey = process.env.GEMINI_API_KEY || clientApiKey;
+    const rawApiKey = process.env.GEMINI_API_KEY || clientApiKey || '';
+    const apiKey = rawApiKey.trim();
 
     if (!apiKey) {
       return res.status(401).json({
-        error: 'Missing Gemini API key. Please set GEMINI_API_KEY on Vercel or in app Settings.'
+        error: 'Missing Gemini API key'
       });
     }
 
@@ -37,10 +36,10 @@ export default async function handler(req, res) {
 1. systolic: 收缩压/高压 (mmHg，整数)
 2. diastolic: 舒张压/低压 (mmHg，整数)
 3. heart_rate: 心率/脉搏 (bpm，整数)
-4. notes: 备注信息 (如服药、早晚、不适等情况；如无则为空字符串)
+4. notes: 备注信息 (如服药、第几次测量等)
 
-如果用户口述缺少心率或舒张压，根据上下文推断或合理保留（例如常用数值范围：高压 90-180，低压 50-120，心率 50-130）。如果未提及心率，默认返回 75 并记录在 notes。
-只返回结构化 JSON 格式。`;
+支持多轮测量：如果用户连续口述了 2 次或 3 次测量数值（例如："第一次135 85，第二次128 82"），默认提取后一次（更稳定）的数值，并在 notes 记录多次测量说明。
+如果未提及心率，默认返回 75 并记录在 notes。`;
 
     const response = await ai.models.generateContent({
       model: 'gemini-2.5-flash',
@@ -54,7 +53,7 @@ export default async function handler(req, res) {
             systolic: { type: Type.INTEGER, description: '高压 / 收缩压 (mmHg)' },
             diastolic: { type: Type.INTEGER, description: '低压 / 舒张压 (mmHg)' },
             heart_rate: { type: Type.INTEGER, description: '心率 / 脉搏 (BPM)' },
-            notes: { type: Type.STRING, description: '备注或服药记录' }
+            notes: { type: Type.STRING, description: '备注或多轮测量记录' }
           },
           required: ['systolic', 'diastolic', 'heart_rate']
         }

@@ -4,11 +4,12 @@ import HeroReadingCard from './components/HeroReadingCard';
 import VoiceMicButton from './components/VoiceMicButton';
 import ParseConfirmModal from './components/ParseConfirmModal';
 import ManualEntryModal from './components/ManualEntryModal';
+import MachineGuideModal from './components/MachineGuideModal';
 import HistoryList from './components/HistoryList';
 import SettingsModal from './components/SettingsModal';
 
 import { saveRecord, getAllRecords, deleteRecord, markAsSynced } from './lib/db';
-import { parseSpeechTranscript } from './lib/gemini';
+import { parseSpeechTranscript, localExtractVitals } from './lib/gemini';
 import { isSpeechSupported, createSpeechRecognizer } from './lib/speechRecognition';
 import { loadGoogleScripts, initGoogleOAuthClient, appendRecordToSheet, getStoredAccessToken } from './lib/googleSheets';
 
@@ -21,11 +22,12 @@ export default function App() {
   const [parsedResult, setParsedResult] = useState(null);
   const [showManualModal, setShowManualModal] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
-  const [syncStatus, setSyncStatus] = useState('synced'); // 'synced' | 'syncing' | 'offline'
+  const [showGuideModal, setShowGuideModal] = useState(false);
+  const [syncStatus, setSyncStatus] = useState('synced');
 
   const recognizerRef = useRef(null);
+  const latestTranscriptRef = useRef('');
 
-  // 1. Initial Load & Google Scripts
   useEffect(() => {
     loadRecords();
 
@@ -40,7 +42,6 @@ export default function App() {
       }
     }).catch(err => console.warn('Google script load issue:', err));
 
-    // Online/offline listeners
     const handleOnline = () => syncPendingRecords();
     const handleOffline = () => setSyncStatus('offline');
     window.addEventListener('online', handleOnline);
@@ -67,7 +68,6 @@ export default function App() {
     }
   };
 
-  // 2. Syncing unsynced records to Google Sheet
   const syncPendingRecords = async () => {
     const sheetId = localStorage.getItem('gdrive_sheet_id');
     const token = getStoredAccessToken();
@@ -95,21 +95,22 @@ export default function App() {
     }
   };
 
-  // 3. Speech Recognition Logic
   const handleStartListening = () => {
     setSpeechError('');
     setTranscript('');
+    latestTranscriptRef.current = '';
 
     if (!isSpeechSupported()) {
-      setSpeechError('当前浏览器不支持语音识别，请直接点击“手动输入”');
+      setSpeechError('当前浏览器不支持语音识别，已打开“手动输入”');
       setShowManualModal(true);
       return;
     }
 
     const recognizer = createSpeechRecognizer({
       onStart: () => setIsListening(true),
-      onResult: ({ transcript }) => {
-        setTranscript(transcript);
+      onResult: ({ transcript: tText }) => {
+        setTranscript(tText);
+        latestTranscriptRef.current = tText;
       },
       onError: ({ message }) => {
         setIsListening(false);
@@ -117,6 +118,10 @@ export default function App() {
       },
       onEnd: () => {
         setIsListening(false);
+        const textToProcess = latestTranscriptRef.current || transcript;
+        if (textToProcess.trim()) {
+          handleProcessTranscript(textToProcess);
+        }
       }
     });
 
@@ -141,12 +146,12 @@ export default function App() {
     }
     setIsListening(false);
 
-    if (transcript.trim()) {
-      handleProcessTranscript(transcript);
+    const textToProcess = latestTranscriptRef.current || transcript;
+    if (textToProcess.trim()) {
+      handleProcessTranscript(textToProcess);
     }
   };
 
-  // 4. Gemini Parsing
   const handleProcessTranscript = async (textToParse) => {
     setIsProcessing(true);
     setSpeechError('');
@@ -156,21 +161,22 @@ export default function App() {
       const result = await parseSpeechTranscript(textToParse, customApiKey);
       setParsedResult(result);
     } catch (err) {
-      console.error('Parsing error:', err);
-      setSpeechError(err.message || 'AI 解析语音失败，请重试');
+      console.warn('AI Parsing fallback triggered:', err);
+      // Fallback local extract so confirmation modal ALWAYS pops up
+      const fallback = localExtractVitals(textToParse);
+      setParsedResult(fallback);
     } finally {
       setIsProcessing(false);
     }
   };
 
-  // 5. Saving Record (Local IndexedDB + Try Google Sheet Sync)
   const handleConfirmRecordSave = async (recordData) => {
     try {
       const saved = await saveRecord(recordData);
       setParsedResult(null);
       setTranscript('');
+      latestTranscriptRef.current = '';
 
-      // Attempt immediate Google Sheet sync
       const sheetId = localStorage.getItem('gdrive_sheet_id');
       const token = getStoredAccessToken();
 
@@ -181,7 +187,7 @@ export default function App() {
           await markAsSynced(saved.id);
           setSyncStatus('synced');
         } catch (syncErr) {
-          console.warn('Immediate sync error, kept in offline queue:', syncErr);
+          console.warn('Immediate sync error, stored offline:', syncErr);
           setSyncStatus('offline');
         }
       }
@@ -192,7 +198,6 @@ export default function App() {
     }
   };
 
-  // 6. Delete Record
   const handleDeleteRecord = async (id) => {
     if (window.confirm('确定要删除这条健康记录吗？')) {
       await deleteRecord(id);
@@ -200,7 +205,6 @@ export default function App() {
     }
   };
 
-  // 7. CSV Export
   const handleExportCSV = () => {
     if (!records || records.length === 0) return;
 
@@ -226,20 +230,26 @@ export default function App() {
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col selection:bg-rose-500 selection:text-white">
       
-      {/* Header Bar */}
       <Header
         syncStatus={syncStatus}
         onOpenSettings={() => setShowSettingsModal(true)}
         onManualSync={syncPendingRecords}
       />
 
-      {/* Main Content */}
       <main className="flex-1 max-w-3xl w-full mx-auto px-4 py-6">
         
-        {/* Hero Card with latest reading */}
+        {/* Machine Guide Banner Button */}
+        <div className="mb-2 text-right">
+          <button
+            onClick={() => setShowGuideModal(true)}
+            className="text-xs sm:text-sm text-sky-400 hover:text-sky-300 font-bold underline flex items-center gap-1 ml-auto"
+          >
+            📖 查看血压计(SYS/DIA/PULSE)屏幕数字说明
+          </button>
+        </div>
+
         <HeroReadingCard latestRecord={latestRecord} />
 
-        {/* Massive Voice Mic Button */}
         <VoiceMicButton
           isListening={isListening}
           isProcessing={isProcessing}
@@ -250,7 +260,6 @@ export default function App() {
           onOpenManualEntry={() => setShowManualModal(true)}
         />
 
-        {/* History Log List */}
         <HistoryList
           records={records}
           onDeleteRecord={handleDeleteRecord}
@@ -260,19 +269,16 @@ export default function App() {
 
       </main>
 
-      {/* Footer */}
       <footer className="text-center py-6 text-slate-500 text-sm border-t border-slate-900 bg-slate-950">
         <p>❤️ 专为长辈设计的关爱健康记录仪 (Voice PWA)</p>
         <p className="text-xs text-slate-600 mt-1">支持离线存储与 Google Drive 云端安全备份</p>
       </footer>
 
-      {/* Modals */}
       <ParseConfirmModal
         parsedResult={parsedResult}
         onConfirm={handleConfirmRecordSave}
         onCancel={() => setParsedResult(null)}
         onReRecord={() => {
-          setParsedResult(null);
           handleStartListening();
         }}
       />
@@ -281,6 +287,11 @@ export default function App() {
         isOpen={showManualModal}
         onClose={() => setShowManualModal(false)}
         onSave={handleConfirmRecordSave}
+      />
+
+      <MachineGuideModal
+        isOpen={showGuideModal}
+        onClose={() => setShowGuideModal(false)}
       />
 
       <SettingsModal
