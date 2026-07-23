@@ -10,7 +10,8 @@ export function createSpeechRecognizer({ onResult, onError, onEnd, onStart }) {
   }
 
   const recognition = new SpeechRecognition();
-  recognition.continuous = false;
+  // continuous = true allows long speech with pauses without auto-stopping prematurely!
+  recognition.continuous = true;
   recognition.interimResults = true;
   recognition.lang = 'zh-CN';
 
@@ -30,7 +31,13 @@ export function createSpeechRecognizer({ onResult, onError, onEnd, onStart }) {
       }
     }
 
-    const currentText = finalTranscript || interimTranscript;
+    // Accumulate total transcript across all continuous speech chunks
+    let totalText = '';
+    for (let i = 0; i < event.results.length; ++i) {
+      totalText += event.results[i][0].transcript;
+    }
+
+    const currentText = totalText || finalTranscript || interimTranscript;
     if (onResult) {
       onResult({
         transcript: currentText,

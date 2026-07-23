@@ -292,7 +292,10 @@ export default function App() {
         onConfirm={handleConfirmRecordSave}
         onCancel={() => setParsedResult(null)}
         onReRecord={() => {
-          handleStartListening();
+          setParsedResult(null);
+          setTimeout(() => {
+            handleStartListening();
+          }, 300);
         }}
       />
 
