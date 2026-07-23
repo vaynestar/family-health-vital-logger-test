@@ -5,6 +5,7 @@ import VoiceMicButton from './components/VoiceMicButton';
 import ParseConfirmModal from './components/ParseConfirmModal';
 import ManualEntryModal from './components/ManualEntryModal';
 import MachineGuideModal from './components/MachineGuideModal';
+import CalendarModal from './components/CalendarModal';
 import HistoryList from './components/HistoryList';
 import SettingsModal from './components/SettingsModal';
 
@@ -23,6 +24,7 @@ export default function App() {
   const [showManualModal, setShowManualModal] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [showGuideModal, setShowGuideModal] = useState(false);
+  const [showCalendarModal, setShowCalendarModal] = useState(false);
   const [syncStatus, setSyncStatus] = useState('synced');
 
   const recognizerRef = useRef(null);
@@ -193,7 +195,7 @@ export default function App() {
             await sendRecordViaWebhook(saved, webhookUrl);
             await markAsSynced(saved.id);
           } else {
-            await appendRecordToSheet(sheetId, saved, token);
+            await appendRecordToSheet(saved, sheetId, token);
             await markAsSynced(saved.id);
           }
           setSyncStatus('synced');
@@ -275,6 +277,7 @@ export default function App() {
           onDeleteRecord={handleDeleteRecord}
           onSyncRecord={syncPendingRecords}
           onExportCSV={handleExportCSV}
+          onOpenCalendar={() => setShowCalendarModal(true)}
         />
 
       </main>
@@ -302,6 +305,12 @@ export default function App() {
       <MachineGuideModal
         isOpen={showGuideModal}
         onClose={() => setShowGuideModal(false)}
+      />
+
+      <CalendarModal
+        isOpen={showCalendarModal}
+        onClose={() => setShowCalendarModal(false)}
+        records={records}
       />
 
       <SettingsModal
