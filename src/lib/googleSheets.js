@@ -45,16 +45,17 @@ export async function sendRecordViaWebhook(record, webhookUrl) {
     notes: record.notes || ''
   };
 
-  // Use no-cors or standard fetch for Apps Script redirect
-  const response = await fetch(targetUrl, {
+  // mode: 'no-cors' prevents browser CORS block on Google Apps Script redirects
+  await fetch(targetUrl, {
     method: 'POST',
+    mode: 'no-cors',
     headers: {
       'Content-Type': 'text/plain;charset=utf-8',
     },
     body: JSON.stringify(payload)
   });
 
-  return response;
+  return true;
 }
 
 // -------------------------------------------------------------

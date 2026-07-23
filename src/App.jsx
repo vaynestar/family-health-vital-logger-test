@@ -195,7 +195,7 @@ export default function App() {
             await sendRecordViaWebhook(saved, webhookUrl);
             await markAsSynced(saved.id);
           } else {
-            await appendRecordToSheet(saved, sheetId, token);
+            await appendRecordToSheet(sheetId, saved, token);
             await markAsSynced(saved.id);
           }
           setSyncStatus('synced');
